@@ -380,5 +380,3 @@ print(f'Prediction set AUROC (w-ovr): {auroc:2.4f}')
 
     Prediction set AUROC (w-ovr): 0.9914
     
-
-This was either an easy problem, or wavelets are very powerful (or something in between).
