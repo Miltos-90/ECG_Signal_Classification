@@ -1,4 +1,4 @@
-# Classifying Electrocardiogram signals with wavelets and lightGBM
+# Classification of Electrocardiogram signals into arrhythmia types
 
 In the following we will classify ECG signals using the [MIT-BIH Arrthymia database](https://ecg.mit.edu/) compiled by MIT.
 
