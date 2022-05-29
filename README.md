@@ -1,4 +1,4 @@
-# Classification of Electrocardiogram signals
+# Classifying Electrocardiogram signals with wavelets and lightGBM
 
 In the following we will classify ECG signals using the [MIT-BIH Arrthymia database](https://ecg.mit.edu/) compiled by MIT.
 
@@ -12,12 +12,11 @@ Additional info for this dataset can be found [here](https://archive.physionet.o
 
 
 ```python
+from utils import feature_extractor
+
 import numpy as np 
 import pandas as pd
 import matplotlib.pyplot as plt
-import pywt
-from tsfresh.feature_extraction import feature_calculators as fc
-from tqdm.notebook import tqdm
 
 from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
 from sklearn.metrics import roc_auc_score
@@ -25,7 +24,7 @@ from sklearn.utils import compute_sample_weight
 import lightgbm as lgb
 ```
 
-## Import the data
+## Data read
 
 
 ```python
@@ -86,10 +85,7 @@ plt.title('Random samples from each class')
 plt.show()
 ```
 
-
-    
 ![png](imm/ecg-signal-categorisation_7_0.png)
-    
 
 
 ## Preprocessing
@@ -97,115 +93,7 @@ plt.show()
 Some signals are zero padded. Trailing zeros will be removed and a discrete wavelet transformation will be applied.
 From each sub-band several features will be extracted.
 With the new (tabular) dataset a classifier will be trained.
-
-We need a few functions:
-
-
-```python
-def make_feat_dict(data, id_name):
-    ''' Makes a dictionary out of the specified features
-        Inputs: 
-            data:    1D np.array containing the signal from which the features will be extracted
-            id_name: str Identifier of the signal that gets appended after the name of every feature
-        Outputs:
-            d: dictionary of extracted features
-    '''
-    
-    d = {"abs_energy"                + id_name: fc.abs_energy(data), 
-         "absolute_maximum"          + id_name: fc.absolute_maximum(data),
-         "absolute_sum_of_changes"   + id_name: fc.absolute_sum_of_changes(data),
-         "benford_correlation"       + id_name: fc.benford_correlation(data),
-         "cid_ce"                    + id_name: fc.cid_ce(data, normalize = True),
-         "first_location_of_maximum" + id_name: fc.first_location_of_maximum(data),
-         "first_location_of_minimum" + id_name: fc.first_location_of_minimum(data),
-         "kurtosis"                  + id_name: fc.kurtosis(data),
-         "maximum"                   + id_name: fc.maximum(data),
-         "mean"                      + id_name: fc.mean(data),
-         "mean_abs_change"           + id_name: fc.mean_abs_change(data),
-         "median"                    + id_name: fc.median(data),
-         "minimum"                   + id_name: fc.minimum(data),
-         "root_mean_square"          + id_name: fc.root_mean_square(data),
-         "skewness"                  + id_name: fc.skewness(data),
-         "standard_deviation"        + id_name: fc.standard_deviation(data),
-         "sum_values"                + id_name: fc.sum_values(data),
-         "variance"                  + id_name: fc.variance(data)
-        }
-    
-    return d
-
-def compute_DWT(sample, noLevels, waveletName):
-    '''
-    Compute the DWT transformation of a signal with a specified number of sub-bands from a given wavelet
-        Inputs:
-            sample:      1D np.array containing the signal to which the DWT will be applied
-            noLevels:    Number of sub-bands to compute
-            waveletName: Name of the wavelet
-        Outputs: 
-            signals: List of extracted signals (np.arrays)
-    '''
-    
-    sample  = np.trim_zeros(sample, trim = 'b') # Trim trailing zeroes
-    signals = [] # Empty list to hold the signals from each sub-band
-    
-    for ii in range(noLevels):
-
-        # Run wavelet transformation
-        (sample, coeff_d) = pywt.dwt(sample, waveletName)
-        
-        # Add signal to list
-        signals.append(sample)
-        
-        # From level 0 also retain detail coefficients
-        if ii == 0: 
-            signals.append(coeff_d)
-    
-    return signals
-
-def compute_features(signals):
-    '''
-    Extracts features from a list of signals
-    Inputs: 
-        signals: list of np.arrays
-    Outputs:
-        features: dictionary containing the extracted features
-    '''
-    
-    # Extract features from each sub-band
-    dictList = [] # List of dictionaries to hold the features from each level of the DWT
-    
-    for sig_id, signal in enumerate(signals):
-        
-        d = make_feat_dict(signal, id_name = str(sig_id))
-        dictList.append(d)
-        
-    # Make flat Dict from the DictList
-    features = {k:v for element in dictList for k,v in element.items()}
-    
-    return features
-    
-def feature_extractor(df, noLevels, waveletName):
-    '''
-    Preprocesses the entire dataframe (computes DWT + feature extract from each sub-band)
-    Inputs:
-        df:          2D np.array from which the features will be extracted (each row is one signal to be preprocessed)
-        noLevels:    Number of sub-bands to compute
-        waveletName: Name of the wavelet
-    Outputs:
-        Processed dataframe
-    '''
-    
-    # List of dictionaries containing the extracted features
-    featDict = []
-
-    for row in tqdm(range(df.shape[0])):
-
-        sample   = df[row].flatten() # Grab sample    
-        signals  = compute_DWT(sample, noLevels, waveletName)
-        features = compute_features(signals)
-        featDict.append(features)
-
-    return pd.DataFrame(featDict)
-```
+This all takes place in the utils modude
 
 
 ```python
@@ -378,5 +266,7 @@ auroc = roc_auc_score(yt, y_hat, multi_class = 'ovr', sample_weight = wt)
 print(f'Prediction set AUROC (w-ovr): {auroc:2.4f}')
 ```
 
-    Prediction set AUROC (w-ovr): 0.9914
+    Prediction set AUROC (w-ovr): 0.9894
+    
+
     
